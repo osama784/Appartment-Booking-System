@@ -2,100 +2,104 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
-use App\Http\Requests\RegisterUserRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        // If we reach here, validation has already passed!
-        // Laravel automatically validates using our RegisterUserRequest
 
         try {
-            $shouldValidate = ['phone', 'role', 'first_name', 'last_name',  'password'];
-            foreach ($shouldValidate as $value) {
-                $exist = request()->input($value);
-                if ($exist == null) {
-                    return response()->json([
-                        "message" => "incomplete data",
-                        "field" => $value
-                    ], 400);
-                }
-            }
-            // Handle file uploads
+            $validatedData = $request->validate([
+                "phone" => "required|string|unique:users,phone",
+                "role" => Rule::enum(UserRole::class)->except([UserRole::ADMIN]),
+                "first_name" => "required|string|max:50",
+                "last_name" => "required|string|max:50",
+                "password" => "required|min:8",
+                "birth_date" => "required|date",
+                "profile_image" => "nullable|image|max:5120|mimes:jpg,jpeg,png",
+                "id_image" => "nullable|image|max:5120|mimes:jpg,jpeg,png"
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 400);
+        }
+
+        try {
+            // handle file uploads
             $profileImagePath = null;
             $idImagePath = null;
 
             if ($request->hasFile('profile_image')) {
-                $profileImagePath = $request->file('profile_image')->store('profiles', 'public');
+                $profileImagePath = $request->file('profile_image')
+                    ->store('profiles', 'public');
             }
 
             if ($request->hasFile('id_image')) {
-                $idImagePath = $request->file('id_image')->store('ids', 'public');
+                $idImagePath = $request->file('id_image')
+                    ->store('ids', 'public');
             }
 
-            // Create user
             $user = User::create([
-                'phone' => $request->phone,
-                'role' => $request->role,
-                'first_name' => $request->first_name,
-                'last_name' => $request->last_name,
-                'birth_date' => $request->birth_date,
+                ...$validatedData,
                 'profile_image' => $profileImagePath,
                 'id_image' => $idImagePath,
-                'password' => Hash::make($request->password),
-                // is_approved defaults to false automatically
+                'password' => Hash::make($validatedData["password"]),
             ]);
 
             return response()->json([
                 'message' => 'Registration successful. Waiting for admin approval.',
-                'user' => [
-                    'id' => $user->id,
-                    'phone' => $user->phone,
-                    'full_name' => $user->full_name,
-                    'role' => $user->role,
-                ]
+                'user_serialized' => $user->serialize(),
+                'user' => $user
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Registration failed',
-                'error' => $e->getMessage()
+                'message' => 'Registration failed. Please try again.',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
 
     public function login(Request $request)
     {
-        // Basic validation for login
-
-        $request->validate([
-            'phone' => 'required',
-            'password' => 'required'
-        ]);
-
         try {
-            // Find user by phone
-            $user = User::where('phone', $request->phone)->first();
+            $validatedData = $request->validate([
+                'phone' => 'required',
+                'password' => 'required'
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 400);
+        }
+        try {
+            $user = User::where('phone', $validatedData["phone"])->first();
 
-            // Check if user exists and password is correct
-            if (!$user || !Hash::check($request->password, $user->password)) {
+            if (!$user || !Hash::check($validatedData["password"], $user->password)) {
                 return response()->json([
-                    'message' => 'Invalid credentials'
+                    'message' => 'User not found'
                 ], 401);
             }
 
-            // Check if user is approved
-            if (!$user->is_approved) {
+            if ($user->isRejected()) {
+                return response()->json([
+                    'message' => 'Account rejected from admin.'
+                ], 403);
+            }
+            if ($user->isPending()) {
                 return response()->json([
                     'message' => 'Account pending admin approval. Please wait for approval.'
                 ], 403);
             }
 
-            // Create API token
             $token = $user->createToken('auth-token')->plainTextToken;
 
             return response()->json([
@@ -112,7 +116,7 @@ class AuthController extends Controller
             return response()->json([
                 "message" => "failed!",
                 "errors" => $exc->getMessage()
-            ]);
+            ], 500);
         }
     }
 

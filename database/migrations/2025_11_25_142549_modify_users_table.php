@@ -12,9 +12,6 @@ return new class extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            // Remove email and add phone
-            // $table->dropColumn('email');
-            // $table->dropColumn('email_verified_at');
 
             // Add our custom fields
             $table->string('phone')->unique();

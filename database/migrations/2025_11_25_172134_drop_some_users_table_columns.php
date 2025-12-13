@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // Remove email and add phone
+            // Remove email
             $table->dropColumn('email');
             $table->dropColumn('email_verified_at');
             $table->dropColumn('name');

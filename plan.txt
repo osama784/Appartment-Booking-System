@@ -1,0 +1,30 @@
+endpoints:
+    - users:
+        singup (anonymos)
+        login (all)
+        logout (all)
+        update-profile (all)
+        create-user (admin)
+        update-user (admin)
+        delete-user (admin)
+        list-users (admin)
+        get-user (admin)
+
+    - appartments:
+        create-appartment (admin, owner)
+        update-appartment (admin, owner)
+        delete-appartment (admin, owner)
+        list-appartments (all)
+        rate-appartment (tenant)
+        list-ratings (all)
+
+
+    - bookings:
+        book-appartment (tenant)
+        request-booking-update (tenant)
+        request-booking-cancellation (tenant)
+        list-bookings (all)
+
+
+
+

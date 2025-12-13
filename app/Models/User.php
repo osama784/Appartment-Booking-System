@@ -11,11 +11,6 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'phone',
         'role',
@@ -24,29 +19,16 @@ class User extends Authenticatable
         'profile_image',
         'birth_date',
         'id_image',
-        'is_approved',
-        'password', // We'll still use password for authentication
+        'password',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'birth_date' => 'date',
-        'is_approved' => 'boolean',
-        'approved_at' => 'datetime',
     ];
 
     /**
@@ -81,11 +63,28 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+
+    /**
+     * Check if user is pending
+     */
+    public function isPending()
+    {
+        return $this->status === "pending";
+    }
+
     /**
      * Check if user is approved
      */
     public function isApproved()
     {
-        return $this->is_approved;
+        return $this->status === "approved";
+    }
+
+    /**
+     * Check if user is rejected
+     */
+    public function isRejected()
+    {
+        return $this->status === "rejected";
     }
 }
