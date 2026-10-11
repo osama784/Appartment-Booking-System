@@ -23,8 +23,10 @@ intended API surface is sketched in [`plan.txt`](plan.txt).
 
 - Three roles: `admin`, `owner`, `tenant` (`app/Enums/UserRole.php`);
   self-registration cannot create an `admin`
-- Admin-approval workflow: new accounts have status `pending` and cannot log
-  in until approved (`pending` / `approved` / `rejected`)
+- Account statuses — accounts carry a `pending` / `approved` / `rejected`
+  status, and `pending` or `rejected` accounts cannot log in. (Setting a user
+  to `approved` has no endpoint yet; `register` is currently broken — see
+  Known issues.)
 
 **Database schema** (`database/migrations/`) — tables for users, apartments,
 apartment images, bookings, booking update requests, reviews, conversations,
